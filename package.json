@@ -1,0 +1,25 @@
+{
+  "name": "webrtc-video-conference-tutorial",
+  "version": "1.0.0",
+  "description": "This tutorial is divided in three versions:",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agilityfeat/webrtc-video-conference-tutorial.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/agilityfeat/webrtc-video-conference-tutorial/issues"
+  },
+  "homepage": "https://github.com/agilityfeat/webrtc-video-conference-tutorial#readme",
+  "dependencies": {
+    "express": "4.15.4",
+    "socket.io": "2.0.3"
+  }
+}
