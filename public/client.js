@@ -13,16 +13,20 @@ var SERVER_BASE_URL = 'http://localhost:3000';
 
 // Let's do this
 btnEnter.onclick = function () {
-    roomName = inputRoom.value;
+    if (inputRoom.value === '') {
+        alert('Please type a room name');
+    } else {
+        roomName = inputRoom.value;
 
-    fetch(SERVER_BASE_URL + '/room/' + roomName).then(function (res) {
-        return res.json()
-    }).then(function (res) {
-        apiKey = res.apiKey;
-        sessionId = res.sessionId;
-        token = res.token;
-        initializeSession();
-    }).catch(handleError);
+        fetch(SERVER_BASE_URL + '/room/' + roomName).then(function (res) {
+            return res.json()
+        }).then(function (res) {
+            apiKey = res.apiKey;
+            sessionId = res.sessionId;
+            token = res.token;
+            initializeSession();
+        }).catch(handleError);
+    }
 }
 
 // tokbox code
