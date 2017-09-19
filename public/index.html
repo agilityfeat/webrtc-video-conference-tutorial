@@ -1,24 +1,42 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>WebRTC Video Conference Tutorial - Media Server</title>
-    </head>
-    <body>
-        <h1>WebRTC Video Conference Tutorial - Media Server</h1>
 
-        <div id="roomSelection" style="display: block">
-            <label>Type user name:</label>
-            <input id="name" type="text" />
-            <label>Type room name:</label>
-            <input id="room" type="text" />
-            <button id="register">Enter</button>
-        </div>
+<head>
+    <title>WebRTC Video Conference Tutorial - Media Server</title>
+    <style>
+        #meetingRoom div {
+            text-align: center;
+        }
 
-        <div id="meetingRoom" style="display: none">
-        </div>
+        .videoContainer {
+            float: left;
+        }
 
-        <script src="adapter.js"></script>
-        <script src="kurento-utils.min.js"></script>
-        <script src="/socket.io/socket.io.js"></script>
-        <script src="client.js"></script>
+        #meetingRoom:after {
+            content: '';
+            display: block;
+            clear: both;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>WebRTC Video Conference Tutorial - Media Server</h1>
+
+    <div id="roomSelection" style="display: block">
+        <label>Type user name:</label>
+        <input id="name" type="text" />
+        <label>Type room name:</label>
+        <input id="room" type="text" />
+        <button id="register">Enter</button>
+    </div>
+
+    <div id="meetingRoom" style="display: none">
+    </div>
+
+    <script src="adapter.js"></script>
+    <script src="kurento-utils.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+
 </html>

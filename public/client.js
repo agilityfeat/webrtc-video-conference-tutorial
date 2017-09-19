@@ -54,9 +54,15 @@ socket.on('message', message => {
 // handlers functions
 function receiveVideo(userid, username) {
     var video = document.createElement('video');
+    var div = document.createElement('div');
+    div.className = "videoContainer";
+    var name = document.createElement('div');
     video.id = userid;
     video.autoplay = true;
-    divMeetingRoom.appendChild(video);
+    name.appendChild(document.createTextNode(username));
+    div.appendChild(video);
+    div.appendChild(name);
+    divMeetingRoom.appendChild(div);
 
     var user = {
         id: userid,
@@ -106,9 +112,15 @@ function receiveVideo(userid, username) {
 
 function onExistingParticipants(userid, existingUsers) {
     var video = document.createElement('video');
+    var div = document.createElement('div');
+    div.className = "videoContainer";
+    var name = document.createElement('div');
     video.id = userid;
     video.autoplay = true;
-    divMeetingRoom.appendChild(video);
+    name.appendChild(document.createTextNode(userName));
+    div.appendChild(video);
+    div.appendChild(name);
+    divMeetingRoom.appendChild(div);
 
     var user = {
         id: userid,
