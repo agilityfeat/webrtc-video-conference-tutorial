@@ -13,8 +13,8 @@ var remoteStream;
 var rtcPeerConnection;
 var iceServers = {
     'iceServers': [
-        { 'url': 'stun:stun.services.mozilla.com' },
-        { 'url': 'stun:stun.l.google.com:19302' }
+        { 'urls': 'stun:stun.services.mozilla.com' },
+        { 'urls': 'stun:stun.l.google.com:19302' }
     ]
 }
 var streamConstraints = { audio: true, video: true };
@@ -38,20 +38,20 @@ btnGoRoom.onclick = function () {
 socket.on('created', function (room) {
     navigator.mediaDevices.getUserMedia(streamConstraints).then(function (stream) {
         localStream = stream;
-        localVideo.src = URL.createObjectURL(stream);
+        localVideo.srcObject = stream;
         isCaller = true;
     }).catch(function (err) {
-        console.log('An error ocurred when accessing media devices');
+        console.log('An error ocurred when accessing media devices', err);
     });
 });
 
 socket.on('joined', function (room) {
     navigator.mediaDevices.getUserMedia(streamConstraints).then(function (stream) {
         localStream = stream;
-        localVideo.src = URL.createObjectURL(stream);
+        localVideo.srcObject = stream;
         socket.emit('ready', roomNumber);
     }).catch(function (err) {
-        console.log('An error ocurred when accessing media devices');
+        console.log('An error ocurred when accessing media devices', err);
     });
 });
 
@@ -67,24 +67,48 @@ socket.on('ready', function () {
     if (isCaller) {
         rtcPeerConnection = new RTCPeerConnection(iceServers);
         rtcPeerConnection.onicecandidate = onIceCandidate;
-        rtcPeerConnection.onaddstream = onAddStream;
-        rtcPeerConnection.addStream(localStream);
-        rtcPeerConnection.createOffer(setLocalAndOffer, function(e){console.log(e)});
+        rtcPeerConnection.ontrack = onAddStream;
+        rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
+        rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
+        rtcPeerConnection.createOffer()
+            .then(sessionDescription => {
+                rtcPeerConnection.setLocalDescription(sessionDescription);
+                socket.emit('offer', {
+                    type: 'offer',
+                    sdp: sessionDescription,
+                    room: roomNumber
+                });
+            })
+            .catch(error => {
+                console.log(error)
+            })
     }
 });
 
-socket.on('offer', function (event){
-    if(!isCaller){
+socket.on('offer', function (event) {
+    if (!isCaller) {
         rtcPeerConnection = new RTCPeerConnection(iceServers);
         rtcPeerConnection.onicecandidate = onIceCandidate;
-        rtcPeerConnection.onaddstream = onAddStream;
-        rtcPeerConnection.addStream(localStream);
+        rtcPeerConnection.ontrack = onAddStream;
+        rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
+        rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
         rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
-        rtcPeerConnection.createAnswer(setLocalAndAnswer, function(e){console.log(e)});
+        rtcPeerConnection.createAnswer()
+            .then(sessionDescription => {
+                rtcPeerConnection.setLocalDescription(sessionDescription);
+                socket.emit('answer', {
+                    type: 'answer',
+                    sdp: sessionDescription,
+                    room: roomNumber
+                });
+            })
+            .catch(error => {
+                console.log(error)
+            })
     }
 });
 
-socket.on('answer', function (event){
+socket.on('answer', function (event) {
     rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
 })
 
@@ -103,24 +127,6 @@ function onIceCandidate(event) {
 }
 
 function onAddStream(event) {
-    remoteVideo.src = URL.createObjectURL(event.stream);
+    remoteVideo.srcObject = event.streams[0];
     remoteStream = event.stream;
-}
-
-function setLocalAndOffer(sessionDescription) {
-    rtcPeerConnection.setLocalDescription(sessionDescription);
-    socket.emit('offer', {
-        type: 'offer',
-        sdp: sessionDescription,
-        room: roomNumber
-    });
-}
-
-function setLocalAndAnswer(sessionDescription) {
-    rtcPeerConnection.setLocalDescription(sessionDescription);
-    socket.emit('answer', {
-        type: 'answer',
-        sdp: sessionDescription,
-        room: roomNumber
-    });
 }
