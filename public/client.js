@@ -5,12 +5,16 @@ var inputRoomNumber = document.getElementById("roomNumber");
 var btnGoRoom = document.getElementById("goRoom");
 var localVideo = document.getElementById("localVideo");
 var remoteVideo = document.getElementById("remoteVideo");
+let h2CallName = document.getElementById("callName")
+let inputCallName = document.getElementById("inputCallName")
+let btnSetName = document.getElementById("setName")
 
 // variables
 var roomNumber;
 var localStream;
 var remoteStream;
 var rtcPeerConnection;
+let dataChannel
 var iceServers = {
     'iceServers': [
         { 'urls': 'stun:stun.services.mozilla.com' },
@@ -33,6 +37,15 @@ btnGoRoom.onclick = function () {
         divConsultingRoom.style = "display: block;";
     }
 };
+
+btnSetName.onclick = () => {
+    if (inputCallName.value === '') {
+        alert("Please type a name")
+    } else {
+        dataChannel.send(inputCallName.value)
+        h2CallName.innerText = inputCallName.value
+    }
+}
 
 // message handlers
 socket.on('created', function (room) {
@@ -82,6 +95,9 @@ socket.on('ready', function () {
             .catch(error => {
                 console.log(error)
             })
+
+        dataChannel = rtcPeerConnection.createDataChannel(roomNumber)
+        dataChannel.onmessage = event => { h2CallName.innerText = event.data }
     }
 });
 
@@ -93,6 +109,10 @@ socket.on('offer', function (event) {
         rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
         rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
         rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
+        rtcPeerConnection.ondatachannel = event => {
+            dataChannel = event.channel
+            dataChannel.onmessage = event => { h2CallName.innerText = event.data }
+        }
         rtcPeerConnection.createAnswer()
             .then(sessionDescription => {
                 rtcPeerConnection.setLocalDescription(sessionDescription);

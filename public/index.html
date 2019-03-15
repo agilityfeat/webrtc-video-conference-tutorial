@@ -12,8 +12,14 @@
     </div>
 
     <div id="consultingRoom" style="display:none">
+        <h2 id="callName"></h2>
+        <p>
+            <input id="inputCallName" type="text">
+            <button id="setName">Set Name</button>
+        </p>
         <video id="localVideo" autoplay></video>
         <video id="remoteVideo" autoplay></video>
+        
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
