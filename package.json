@@ -18,9 +18,9 @@
   },
   "homepage": "https://github.com/agilityfeat/webrtc-video-conference-tutorial#readme",
   "dependencies": {
-    "express": "4.15.4",
-    "kurento-client": "6.6.0",
+    "express": "^4.16.4",
+    "kurento-client": "^6.9.0",
     "minimist": "1.2.0",
-    "socket.io": "2.0.3"
+    "socket.io": "^2.2.0"
   }
 }
