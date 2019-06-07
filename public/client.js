@@ -14,13 +14,13 @@ var roomNumber;
 var localStream;
 var remoteStream;
 var rtcPeerConnection;
-let dataChannel
+let dataChannel;
 var iceServers = {
     'iceServers': [
         { 'urls': 'stun:stun.services.mozilla.com' },
         { 'urls': 'stun:stun.l.google.com:19302' }
     ]
-}
+};
 var streamConstraints = { audio: true, video: true };
 var isCaller;
 
@@ -83,6 +83,8 @@ socket.on('ready', function () {
         rtcPeerConnection.ontrack = onAddStream;
         rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
         rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
+        dataChannel = rtcPeerConnection.createDataChannel(roomNumber)
+        dataChannel.onmessage = event => { h2CallName.innerText = event.data }
         rtcPeerConnection.createOffer()
             .then(sessionDescription => {
                 rtcPeerConnection.setLocalDescription(sessionDescription);
@@ -95,9 +97,6 @@ socket.on('ready', function () {
             .catch(error => {
                 console.log(error)
             })
-
-        dataChannel = rtcPeerConnection.createDataChannel(roomNumber)
-        dataChannel.onmessage = event => { h2CallName.innerText = event.data }
     }
 });
 
@@ -109,10 +108,6 @@ socket.on('offer', function (event) {
         rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
         rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
         rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
-        rtcPeerConnection.ondatachannel = event => {
-            dataChannel = event.channel
-            dataChannel.onmessage = event => { h2CallName.innerText = event.data }
-        }
         rtcPeerConnection.createAnswer()
             .then(sessionDescription => {
                 rtcPeerConnection.setLocalDescription(sessionDescription);
@@ -124,7 +119,11 @@ socket.on('offer', function (event) {
             })
             .catch(error => {
                 console.log(error)
-            })
+            });
+        rtcPeerConnection.ondatachannel = event => {
+            dataChannel = event.channel
+            dataChannel.onmessage = event => { h2CallName.innerText = event.data }
+        }
     }
 });
 
