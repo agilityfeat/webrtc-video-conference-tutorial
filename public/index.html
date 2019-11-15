@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<head>
+    <title>WebRTC Video Conference Tutorial - CPaaS</title>
+</head>
+<body>
+    <h1>WebRTC Video Conference Tutorial - CPaaS</h1>
+
+    <div id="selectRoom" style="display: block">
+        <label>Type a room name</label>
+        <input id="room" type="text" />
+        <button id="enter">Go!</button>
+    </div>
+
+    <div id="videos" style="display: none">
+        <div id="publisher"></div>
+        <div id="subscribers"></div>
+    </div>
+
+    <script src="https://static.opentok.com/v2/js/opentok.min.js"></script>
+    <script src="client.js"></script>
+</body>
