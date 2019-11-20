@@ -17,7 +17,7 @@ var iceServers = {
         { 'urls': 'stun:stun.l.google.com:19302' }
     ]
 }
-var streamConstraints = { audio: true, video: true };
+var streamConstraints = { audio: false, video: { width: 640, height: 480 } };
 var isCaller;
 
 // Let's do this
@@ -69,7 +69,7 @@ socket.on('ready', function () {
         rtcPeerConnection.onicecandidate = onIceCandidate;
         rtcPeerConnection.ontrack = onAddStream;
         rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
-        rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
+        //rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
         rtcPeerConnection.createOffer()
             .then(sessionDescription => {
                 rtcPeerConnection.setLocalDescription(sessionDescription);
@@ -91,7 +91,7 @@ socket.on('offer', function (event) {
         rtcPeerConnection.onicecandidate = onIceCandidate;
         rtcPeerConnection.ontrack = onAddStream;
         rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
-        rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
+        //rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
         rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
         rtcPeerConnection.createAnswer()
             .then(sessionDescription => {
