@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "concurrently \"npm run server\" \"npm run electron\"",
+    "server": "node server.js",
+    "electron": "electron main.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +21,8 @@
   },
   "homepage": "https://github.com/agilityfeat/webrtc-video-conference-tutorial#readme",
   "dependencies": {
+    "concurrently": "^5.0.0",
+    "electron": "^7.1.2",
     "express": "^4.16.4",
     "socket.io": "^2.2.0"
   }

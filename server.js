@@ -7,7 +7,7 @@ var io = require('socket.io')(http);
 const port = process.env.PORT || 3000;
 
 // express routing
-app.use(express.static('public'));
+//app.use(express.static('public'));
 
 
 // signaling
