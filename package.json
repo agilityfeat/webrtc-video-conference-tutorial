@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "concurrently \"npm run server\" \"npm run electron\"",
+    "start": "concurrently \"npm run server\" \"npm run electron\" \"npm run electron\"",
     "server": "node server.js",
     "electron": "electron main.js"
   },
