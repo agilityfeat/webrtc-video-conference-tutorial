@@ -1,132 +1,143 @@
 // getting dom elements
-var divSelectRoom = document.getElementById("selectRoom");
-var divConsultingRoom = document.getElementById("consultingRoom");
-var inputRoomNumber = document.getElementById("roomNumber");
-var btnGoRoom = document.getElementById("goRoom");
-var localVideo = document.getElementById("localVideo");
-var remoteVideo = document.getElementById("remoteVideo");
+const divSelectRoom = document.getElementById("selectRoom");
+const divConsultingRoom = document.getElementById("consultingRoom");
+const inputName = document.getElementById("name");
+const inputRoomNumber = document.getElementById("roomNumber");
+const btnJoinBroadcaster = document.getElementById("joinBroadcaster");
+const btnJoinViewer = document.getElementById("joinViewer");
+const videoElement = document.querySelector("video");
 
 // variables
-var roomNumber;
-var localStream;
-var remoteStream;
-var rtcPeerConnection;
-var iceServers = {
-    'iceServers': [
-        { 'urls': 'stun:stun.services.mozilla.com' },
-        { 'urls': 'stun:stun.l.google.com:19302' }
-    ]
-}
-var streamConstraints = { audio: true, video: true };
-var isCaller;
+let user;
+let rtcPeerConnections = {};
 
-// Let's do this
+// constants
+const iceServers = {
+  iceServers: [
+    { urls: "stun:stun.services.mozilla.com" },
+    { urls: "stun:stun.l.google.com:19302" },
+  ],
+};
+const streamConstraints = { audio: false, video: true };
+
+// Let's do this 💪
 var socket = io();
 
-btnGoRoom.onclick = function () {
-    if (inputRoomNumber.value === '') {
-        alert("Please type a room number")
-    } else {
-        roomNumber = inputRoomNumber.value;
-        socket.emit('create or join', roomNumber);
-        divSelectRoom.style = "display: none;";
-        divConsultingRoom.style = "display: block;";
-    }
+btnJoinBroadcaster.onclick = function () {
+  if (inputRoomNumber.value === "" || inputName.value === "") {
+    alert("Please type a room number and a name");
+  } else {
+    user = {
+        room: inputRoomNumber.value,
+        name: inputName.value
+    };
+    
+    divSelectRoom.style = "display: none;";
+    divConsultingRoom.style = "display: block;";
+
+    navigator.mediaDevices
+    .getUserMedia(streamConstraints)
+    .then(function (stream) {
+      videoElement.srcObject = stream;
+      socket.emit("register as broadcaster", user.room);
+    })
+    .catch(function (err) {
+      console.log("An error ocurred when accessing media devices", err);
+    });
+  }
 };
 
+btnJoinViewer.onclick = function () {
+    if (inputRoomNumber.value === "" || inputName.value === "") {
+        alert("Please type a room number and a name");
+      } else {
+        user = {
+            room: inputRoomNumber.value,
+            name: inputName.value
+        };
+        
+        divSelectRoom.style = "display: none;";
+        divConsultingRoom.style = "display: block;";
+    
+        socket.emit("register as viewer", user);
+      }
+}
+
 // message handlers
-socket.on('created', function (room) {
-    navigator.mediaDevices.getUserMedia(streamConstraints).then(function (stream) {
-        localStream = stream;
-        localVideo.srcObject = stream;
-        isCaller = true;
-    }).catch(function (err) {
-        console.log('An error ocurred when accessing media devices', err);
-    });
+socket.on("new viewer", function (viewer) {
+    rtcPeerConnections[viewer.id] = new RTCPeerConnection(iceServers);
+
+    const stream = videoElement.srcObject
+    stream.getTracks().forEach(track => rtcPeerConnections[viewer.id].addTrack(track, stream));
+
+    rtcPeerConnections[viewer.id].onicecandidate = event => {
+        if (event.candidate) {
+            console.log("sending ice candidate");
+            socket.emit("candidate", viewer.id, {
+              type: "candidate",
+              label: event.candidate.sdpMLineIndex,
+              id: event.candidate.sdpMid,
+              candidate: event.candidate.candidate
+            });
+          }
+    };
+    
+    rtcPeerConnections[viewer.id]
+      .createOffer()
+      .then((sessionDescription) => {
+        rtcPeerConnections[viewer.id].setLocalDescription(sessionDescription);
+        socket.emit("offer", viewer.id, {
+          type: "offer",
+          sdp: sessionDescription,
+          broadcaster: user
+        });
+      })
+      .catch((error) => {
+        console.log(error);
+      });
 });
 
-socket.on('joined', function (room) {
-    navigator.mediaDevices.getUserMedia(streamConstraints).then(function (stream) {
-        localStream = stream;
-        localVideo.srcObject = stream;
-        socket.emit('ready', roomNumber);
-    }).catch(function (err) {
-        console.log('An error ocurred when accessing media devices', err);
-    });
+socket.on("candidate", function (id, event) {
+  var candidate = new RTCIceCandidate({
+    sdpMLineIndex: event.label,
+    candidate: event.candidate,
+  });
+  rtcPeerConnections[id].addIceCandidate(candidate);
 });
 
-socket.on('candidate', function (event) {
-    var candidate = new RTCIceCandidate({
-        sdpMLineIndex: event.label,
-        candidate: event.candidate
-    });
-    rtcPeerConnection.addIceCandidate(candidate);
-});
+socket.on("offer", function (broadcaster, sdp) {
+    rtcPeerConnections[broadcaster.id] = new RTCPeerConnection(iceServers);
 
-socket.on('ready', function () {
-    if (isCaller) {
-        rtcPeerConnection = new RTCPeerConnection(iceServers);
-        rtcPeerConnection.onicecandidate = onIceCandidate;
-        rtcPeerConnection.ontrack = onAddStream;
-        rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
-        rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
-        rtcPeerConnection.createOffer()
-            .then(sessionDescription => {
-                rtcPeerConnection.setLocalDescription(sessionDescription);
-                socket.emit('offer', {
-                    type: 'offer',
-                    sdp: sessionDescription,
-                    room: roomNumber
-                });
+    rtcPeerConnections[broadcaster.id].setRemoteDescription(sdp);
+
+    rtcPeerConnections[broadcaster.id]
+        .createAnswer()
+        .then(sessionDescription => {
+            rtcPeerConnections[broadcaster.id].setLocalDescription(sessionDescription);
+            socket.emit("answer", {
+                type: "answer",
+                sdp: sessionDescription,
+                room: user.room
             })
-            .catch(error => {
-                console.log(error)
-            })
-    }
-});
-
-socket.on('offer', function (event) {
-    if (!isCaller) {
-        rtcPeerConnection = new RTCPeerConnection(iceServers);
-        rtcPeerConnection.onicecandidate = onIceCandidate;
-        rtcPeerConnection.ontrack = onAddStream;
-        rtcPeerConnection.addTrack(localStream.getTracks()[0], localStream);
-        rtcPeerConnection.addTrack(localStream.getTracks()[1], localStream);
-        rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
-        rtcPeerConnection.createAnswer()
-            .then(sessionDescription => {
-                rtcPeerConnection.setLocalDescription(sessionDescription);
-                socket.emit('answer', {
-                    type: 'answer',
-                    sdp: sessionDescription,
-                    room: roomNumber
-                });
-            })
-            .catch(error => {
-                console.log(error)
-            })
-    }
-});
-
-socket.on('answer', function (event) {
-    rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event));
-})
-
-// handler functions
-function onIceCandidate(event) {
-    if (event.candidate) {
-        console.log('sending ice candidate');
-        socket.emit('candidate', {
-            type: 'candidate',
-            label: event.candidate.sdpMLineIndex,
-            id: event.candidate.sdpMid,
-            candidate: event.candidate.candidate,
-            room: roomNumber
         })
-    }
-}
 
-function onAddStream(event) {
-    remoteVideo.srcObject = event.streams[0];
-    remoteStream = event.stream;
-}
+    rtcPeerConnections[broadcaster.id].ontrack = event => {
+        videoElement.srcObject = event.streams[0];
+    }
+
+    rtcPeerConnections[broadcaster.id].onicecandidate = event => {
+        if (event.candidate) {
+            console.log("sending ice candidate");
+            socket.emit("candidate", broadcaster.id, {
+              type: "candidate",
+              label: event.candidate.sdpMLineIndex,
+              id: event.candidate.sdpMid,
+              candidate: event.candidate.candidate
+            });
+          }
+    };
+});
+
+socket.on("answer", function (viewerId, event) {
+  rtcPeerConnections[viewerId].setRemoteDescription(new RTCSessionDescription(event));
+});

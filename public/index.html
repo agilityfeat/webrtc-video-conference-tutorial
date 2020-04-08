@@ -1,19 +1,25 @@
 <!DOCTYPE html>
+
 <head>
     <title>WebRTC Video Conference Tutorial - Plain WebRTC</title>
 </head>
+
 <body>
     <h1>WebRTC Video Conference Tutorial - Plain WebRTC</h1>
 
     <div id="selectRoom">
-        <label>Type the room number</label>
+        <label for="name">Type your Name</label>
+        <input id="name" type="text" />
+        <label for="roomNumber">Type the room number</label>
         <input id="roomNumber" type="text" />
-        <button id="goRoom">Go</button>
+        <button id="joinBroadcaster">Join as Broadcaster</button>
+        <button id="joinViewer">Join as Viewer</button>
     </div>
 
     <div id="consultingRoom" style="display:none">
-        <video id="localVideo" autoplay></video>
-        <video id="remoteVideo" autoplay></video>
+        <video autoplay></video>
+        <p id="broadcasterName"></p>
+        <li id="viewers"></li>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
