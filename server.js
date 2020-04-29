@@ -29,6 +29,13 @@ io.on('connection', function (socket) {
         console.log('Message received: ', message.event);
 
         switch (message.event) {
+            case 'presenter':
+                createPresenter(socket, message.userName, message.roomName, err => {
+                    if (err) {
+                        console.log(err)
+                    }
+                });
+                break;
             case 'joinRoom':
                 joinRoom(socket, message.userName, message.roomName, err => {
                     if (err) {
@@ -37,8 +44,8 @@ io.on('connection', function (socket) {
                 });
                 break;
 
-            case 'receiveVideoFrom':
-                receiveVideoFrom(socket, message.userid, message.roomName, message.sdpOffer, err => {
+            case 'processOffer':
+                processOffer(socket, message.roomName, message.sdpOffer, err => {
                     if (err) {
                         console.log(err);
                     }
@@ -58,13 +65,56 @@ io.on('connection', function (socket) {
 });
 
 // signaling functions
+function createPresenter(socket, username, roomName, callback) {
+    getRoom(socket, roomName, (err, myRoom) => {
+        if(err) {
+            return callback(err);
+        }
+
+        myRoom.pipeline.create('WebRtcEndpoint', (err, masterEndpoint) => {
+            if (err) {
+                return callback(err);
+            }
+
+            const user = {
+                id: socket.id,
+                name: username,
+                endpoint: masterEndpoint
+            }
+
+            const iceCandidateQueue = iceCandidateQueues[user.id];
+            if (iceCandidateQueue) {
+                while (iceCandidateQueue.length) {
+                    const ice = iceCandidateQueue.shift();
+                    console.log(`user: ${user.name} collect candidate for outgoing media`);
+                    user.endpoint.addIceCandidate(ice.candidate);
+                }
+            }
+
+            user.endpoint.on('OnIceCandidate', event => {
+                const candidate = kurento.register.complexTypes.IceCandidate(event.candidate);
+                socket.emit('message', {
+                    event: 'candidate',
+                    userid: user.id,
+                    candidate: candidate
+                });
+            });
+
+            myRoom.presenter = user;
+            socket.emit('message', {
+                event: 'ready'
+            });
+        })
+    })
+}
+
 function joinRoom(socket, username, roomname, callback) {
     getRoom(socket, roomname, (err, myRoom) => {
         if (err) {
             return callback(err);
         }
 
-        myRoom.pipeline.create('WebRtcEndpoint', (err, outgoingMedia) => {
+        myRoom.pipeline.create('WebRtcEndpoint', (err, viewerEndpoint) => {
             if (err) {
                 return callback(err);
             }
@@ -72,20 +122,19 @@ function joinRoom(socket, username, roomname, callback) {
             var user = {
                 id: socket.id,
                 name: username,
-                outgoingMedia: outgoingMedia,
-                incomingMedia: {}
+                endpoint: viewerEndpoint
             }
 
             let iceCandidateQueue = iceCandidateQueues[user.id];
             if (iceCandidateQueue) {
                 while (iceCandidateQueue.length) {
                     let ice = iceCandidateQueue.shift();
-                    console.error(`user: ${user.name} collect candidate for outgoing media`);
-                    user.outgoingMedia.addIceCandidate(ice.candidate);
+                    console.log(`user: ${user.name} collect candidate for outgoing media`);
+                    user.endpoint.addIceCandidate(ice.candidate);
                 }
             }
 
-            user.outgoingMedia.on('OnIceCandidate', event => {
+            user.endpoint.on('OnIceCandidate', event => {
                 let candidate = kurento.register.complexTypes.IceCandidate(event.candidate);
                 socket.emit('message', {
                     event: 'candidate',
@@ -94,34 +143,22 @@ function joinRoom(socket, username, roomname, callback) {
                 });
             });
 
-            socket.to(roomname).emit('message', {
+            socket.to(myRoom.presenter.id).emit('message', {
                 event: 'newParticipantArrived', 
                 userid: user.id,
                 username: user.name
             });
 
-            let existingUsers = [];
-            for (let i in myRoom.participants) {
-                if (myRoom.participants[i].id != user.id) {
-                    existingUsers.push({
-                        id: myRoom.participants[i].id,
-                        name: myRoom.participants[i].name
-                    });
-                }
-            }
-            socket.emit('message', {
-                event: 'existingParticipants', 
-                existingUsers: existingUsers,
-                userid: user.id
-            });
-
             myRoom.participants[user.id] = user;
+            socket.emit('message', {
+                event: 'ready'
+            });
         });
     });
 }
 
-function receiveVideoFrom(socket, userid, roomname, sdpOffer, callback) {
-    getEndpointForUser(socket, roomname, userid, (err, endpoint) => {
+function processOffer(socket, roomname, sdpOffer, callback) {
+    getEndpointForUser(socket, roomname, (err, endpoint) => {
         if (err) {
             return callback(err);
         }
@@ -133,7 +170,6 @@ function receiveVideoFrom(socket, userid, roomname, sdpOffer, callback) {
 
             socket.emit('message', {
                 event: 'receiveVideoAnswer',
-                senderid: userid,
                 sdpAnswer: sdpAnswer
             });
 
@@ -147,25 +183,11 @@ function receiveVideoFrom(socket, userid, roomname, sdpOffer, callback) {
 }
 
 function addIceCandidate(socket, senderid, roomname, iceCandidate, callback) {
-    let user = io.sockets.adapter.rooms[roomname].participants[socket.id];
+    const myRoom = io.sockets.adapter.rooms[roomname]
+    let user = myRoom.participants[socket.id] ||  myRoom.presenter;
     if (user != null) {
         let candidate = kurento.register.complexTypes.IceCandidate(iceCandidate);
-        if (senderid == user.id) {
-            if (user.outgoingMedia) {
-                user.outgoingMedia.addIceCandidate(candidate);
-            } else {
-                iceCandidateQueues[user.id].push({candidate: candidate});
-            }
-        } else {
-            if (user.incomingMedia[senderid]) {
-                user.incomingMedia[senderid].addIceCandidate(candidate);
-            } else {
-                if (!iceCandidateQueues[senderid]) {
-                    iceCandidateQueues[senderid] = [];
-                }
-                iceCandidateQueues[senderid].push({candidate: candidate});
-            }   
-        }
+        user.endpoint.addIceCandidate(candidate);
         callback(null);
     } else {
         callback(new Error("addIceCandidate failed"));
@@ -176,8 +198,6 @@ function addIceCandidate(socket, senderid, roomname, iceCandidate, callback) {
 function getRoom(socket, roomname, callback) {
     var myRoom = io.sockets.adapter.rooms[roomname] || { length: 0 };
     var numClients = myRoom.length;
-
-    console.log(roomname, ' has ', numClients, ' clients');
 
     if (numClients == 0) {
         socket.join(roomname, () => {
@@ -200,56 +220,22 @@ function getRoom(socket, roomname, callback) {
     }
 }
 
-function getEndpointForUser(socket, roomname, senderid, callback) {
+function getEndpointForUser(socket, roomname, callback) {
     var myRoom = io.sockets.adapter.rooms[roomname];
-    var asker = myRoom.participants[socket.id];
-    var sender = myRoom.participants[senderid];
+    var viewer = myRoom.participants[socket.id];
+    var presenter = myRoom.presenter;
 
-    if (asker.id === sender.id) {
-        return callback(null, asker.outgoingMedia);
+    if (presenter.id === socket.id) {
+        return callback(null, presenter.endpoint);
     }
 
-    if (asker.incomingMedia[sender.id]) {
-        sender.outgoingMedia.connect(asker.incomingMedia[sender.id], err => {
-            if (err) {
-                return callback(err);
-            }
-            callback(null, asker.incomingMedia[sender.id]);
-        });
-    } else {
-        myRoom.pipeline.create('WebRtcEndpoint', (err, incoming) => {
-            if (err) {
-                return callback(err);
-            }
+    presenter.endpoint.connect(viewer.endpoint, err => {
+        if (err) {
+            return callback(err);
+        }
 
-            asker.incomingMedia[sender.id] = incoming;
-
-            let iceCandidateQueue = iceCandidateQueues[sender.id];
-            if (iceCandidateQueue) {
-                while (iceCandidateQueue.length) {
-                    let ice = iceCandidateQueue.shift();
-                    console.error(`user: ${sender.name} collect candidate for outgoing media`);
-                    incoming.addIceCandidate(ice.candidate);
-                }
-            }
-
-            incoming.on('OnIceCandidate', event => {
-                let candidate = kurento.register.complexTypes.IceCandidate(event.candidate);
-                socket.emit('message', {
-                    event: 'candidate',
-                    userid: sender.id,
-                    candidate: candidate
-                });
-            });
-
-            sender.outgoingMedia.connect(incoming, err => {
-                if (err) {
-                    return callback(err);
-                }
-                callback(null, incoming);
-            });
-        });
-    }
+        callback(null, viewer.endpoint);
+    });
 }
 
 function getKurentoClient(callback) {
