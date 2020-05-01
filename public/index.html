@@ -3,21 +3,6 @@
 
 <head>
     <title>WebRTC Video Conference Tutorial - Media Server</title>
-    <style>
-        #meetingRoom div {
-            text-align: center;
-        }
-
-        .videoContainer {
-            float: left;
-        }
-
-        #meetingRoom:after {
-            content: '';
-            display: block;
-            clear: both;
-        }
-    </style>
 </head>
 
 <body>
@@ -33,6 +18,9 @@
     </div>
 
     <div id="meetingRoom" style="display: none">
+        <video id="broadcast" autoplay></video>
+        <p id="presenterName"></p>
+        <ul id="viewers"></ul>
     </div>
 
     <script src="adapter.js"></script>

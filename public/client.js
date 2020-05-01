@@ -5,11 +5,13 @@ const inputRoom = document.getElementById("room");
 const inputName = document.getElementById("name");
 const btnPresenter = document.getElementById("presenter");
 const btnRegister = document.getElementById("register");
+const videoBroadcast = document.getElementById("broadcast");
+const pPresenterName = document.getElementById("presenterName");
+const ulViewers = document.getElementById("viewers");
 
 // variables
 let roomName;
 let userName;
-let participants = {};
 let isPresenter;
 let rtcPeer;
 
@@ -62,11 +64,14 @@ socket.on("message", (message) => {
       if(isPresenter) {
         sendVideo();
       } else {
-        receiveVideo();
+        receiveVideo(message.presenterName);
       }
       break;
     case "newParticipantArrived": 
       console.log(`${message.username} has joined the session`);
+      const li = document.createElement("li");
+      li.innerText = `${message.username} has joined`;
+      ulViewers.appendChild(li);
       break;
     case "receiveVideoAnswer":
       onReceiveVideoAnswer(message.sdpAnswer);
@@ -78,20 +83,11 @@ socket.on("message", (message) => {
 });
 
 // handlers functions
-function receiveVideo(userid, username) {
-  var video = document.createElement("video");
-  var div = document.createElement("div");
-  div.className = "videoContainer";
-  var name = document.createElement("div");
-  video.id = userid;
-  video.autoplay = true;
-  name.appendChild(document.createTextNode(username));
-  div.appendChild(video);
-  div.appendChild(name);
-  divMeetingRoom.appendChild(div);
+function receiveVideo(presenterName) {
+  pPresenterName.innerText = `${presenterName} is presenting...`
 
   var options = {
-    remoteVideo: video,
+    remoteVideo: videoBroadcast,
     onicecandidate: onIceCandidate,
   };
 
@@ -126,15 +122,7 @@ function receiveVideo(userid, username) {
 }
 
 function sendVideo() {
-  var video = document.createElement("video");
-  var div = document.createElement("div");
-  div.className = "videoContainer";
-  var name = document.createElement("div");
-  video.autoplay = true;
-  name.appendChild(document.createTextNode(userName));
-  div.appendChild(video);
-  div.appendChild(name);
-  divMeetingRoom.appendChild(div);
+  pPresenterName.innerText = userName + " is presenting...";
 
   var constraints = {
     audio: false,
@@ -148,7 +136,7 @@ function sendVideo() {
   };
 
   var options = {
-    localVideo: video,
+    localVideo: videoBroadcast,
     mediaConstraints: constraints,
     onicecandidate: onIceCandidate,
   };

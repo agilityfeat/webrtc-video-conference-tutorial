@@ -151,7 +151,8 @@ function joinRoom(socket, username, roomname, callback) {
 
             myRoom.participants[user.id] = user;
             socket.emit('message', {
-                event: 'ready'
+                event: 'ready',
+                presenterName: myRoom.presenter.name
             });
         });
     });
