@@ -13,3 +13,5 @@ Each version lives on its own branch so you can checkout to each one to review t
     git checkout tokbox     // for webrtc using CPaaS
 
 As you can see we're using [Kurento](http://www.kurento.org/) as media server and [Tokbox](https://tokbox.com/) as CPaaS service.
+
+This branch is part of [WebRTC.ventures blog post about Kurento](https://webrtc.ventures/2018/08/tutorial-how-to-build-a-video-conference-application-with-webrtc-kurento-media-server/)
